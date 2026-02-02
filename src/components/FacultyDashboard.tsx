@@ -504,7 +504,7 @@ const FacultyDashboard: React.FC = () => {
     `;
     
     try {
-      const API_KEY = "AIzaSyCFtRYB4lBaNDA779H8C9p7UwG9KcujCr4"; 
+      const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
       const genAI = new GoogleGenerativeAI(API_KEY);
       const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" }); // Flash handles large context (1M tokens) easily
       const result = await model.generateContent(prompt);
