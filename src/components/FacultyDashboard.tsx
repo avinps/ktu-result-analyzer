@@ -29,8 +29,6 @@ const GRADE_COLORS = [
   "#881337", "#64748b", "#94a3b8"
 ];
 
-const getDeptColor = (dept: string) => stringToColor(dept);
-
 // --- CUSTOM TOOLTIPS ---
 const CustomTooltip = ({ active, payload, label, type, deptMap, subjectMap }: any) => {
   if (active && payload && payload.length) {
