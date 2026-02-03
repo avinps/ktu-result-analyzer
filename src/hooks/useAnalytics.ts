@@ -3,7 +3,7 @@ import type { StudentResult } from '../utils/pdfParser';
 
 const GRADE_POINTS: Record<string, number> = {
   "S": 10, "A+": 9, "A": 8.5, "B+": 8, "B": 7.5,
-  "C+": 7, "C": 6.5, "D": 6, "P": 5.5, "PASS": 5.5,
+  "C+": 7, "C": 6.5, "D": 6, "P": 5.5, "PASS": 5.5, "Pass": 5.5,
   "F": 0, "FE": 0, "Absent": 0, "Withheld": 0, "TBP": 0
 };
 
