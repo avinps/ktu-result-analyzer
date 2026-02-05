@@ -454,7 +454,7 @@ const FacultyDashboard: React.FC = () => {
         "A+": 9, "A": 8.5, 
         "B+": 8, "B": 7.5, // Check if your scheme needs 7.5 or 7
         "C+": 7, "C": 6.5, // Check if your scheme needs 6.5 or 6
-        "D": 6, "P": 5.5,  // Check if your scheme needs 5.5 or 5
+        "D": 6, "P": 5.5, "Pass": 5.5, "PASS": 5.5, // Check if your scheme needs 5.5 or 5
         "F": 0, "FE": 0, "Absent": 0, "Withheld": 0, "I": 0, "AB": 0
     };
 
