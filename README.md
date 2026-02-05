@@ -77,6 +77,5 @@ Developed by the Department of Data Science, IES College of Engineering, Thrissu
 **Clevin Saji** - UI/UX Design & Data Collection
 
 **Mrs. Santhi P** - Project Guide - HOD, Dept of CSE (Data Science)
-Push to the branch (git push origin feature/AmazingFeature).
 
 All Rights Reserved.
