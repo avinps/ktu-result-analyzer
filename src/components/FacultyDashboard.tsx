@@ -1,3 +1,9 @@
+/*
+ * Copyright (c) 2026 [Your Name / Department Name]. All Rights Reserved.
+ * This code is proprietary and confidential. Unauthorized copying of this file, 
+ * via any medium is strictly prohibited.
+ */
+
 import React, { useState, useEffect, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { parseResultPDF, type ParseResult, type StudentResult } from '../utils/pdfParser';
@@ -9,7 +15,7 @@ import {
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { 
   Upload, BrainCircuit, GraduationCap, ShieldCheck, Building2, GitFork, 
-  FileText, Copy, AlertTriangle, TrendingUp, Check, Activity, Lightbulb, 
+  FileText, Copy, AlertTriangle, TrendingUp, Check, Activity, Lightbulb, Linkedin, 
   Star, Download, X, ArrowUpDown, ArrowUp, ArrowDown, MessageSquare, Info, Github, Globe, User 
 } from 'lucide-react';
 import { FilterBar } from './FilterBar';
@@ -438,17 +444,42 @@ const FacultyDashboard: React.FC = () => {
   };
 
 // --- HELPER FOR REPORT (UPDATED FOR 2024 SCHEME) ---
+  // --- CORRECTED SGPA CALCULATION (Weighted Average) ---
+    // --- HELPER FOR REPORT (CORRECTED TO USE CREDITS) ---
+  // --- HELPER FOR REPORT (CORRECTED FORMULA) ---
   const calculateSGPA = (grades: { [code: string]: string }) => {
-    // New Syllabus Grade Points
+    // 1. Define Points (Ensure F/Absent are 0)
     const points: { [key: string]: number } = {
-        "S": 10, "A+": 9, "A": 8.5, "B+": 8, "B": 7.5,
-        "C+": 7, "C": 6.5, "D": 6, "P": 5.5, "PASS": 5.5, // P and Pass are same
-        "F": 0, "FE": 0, "Absent": 0, "Withheld": 0, "I": 0
+        "O": 10, "S": 10, // Handle both schemes
+        "A+": 9, "A": 8.5, 
+        "B+": 8, "B": 7.5, // Check if your scheme needs 7.5 or 7
+        "C+": 7, "C": 6.5, // Check if your scheme needs 6.5 or 6
+        "D": 6, "P": 5.5,  // Check if your scheme needs 5.5 or 5
+        "F": 0, "FE": 0, "Absent": 0, "Withheld": 0, "I": 0, "AB": 0
     };
-    const validGrades = Object.values(grades).filter(g => points[g] !== undefined);
-    if (validGrades.length === 0) return "0.00";
-    const sum = validGrades.reduce((acc, g) => acc + (points[g] || 0), 0);
-    return (sum / validGrades.length).toFixed(2);
+
+    let totalPoints = 0;
+    let totalCredits = 0;
+
+    Object.entries(grades).forEach(([code, grade]) => {
+        // 2. Only skip "Withheld" (as result is not known yet)
+        if (['Withheld', 'WH', 'TBP'].includes(grade)) return;
+        
+        const point = points[grade];
+        const credit = creditMap[code]; 
+
+        // 3. CRITICAL FIX: Include F/FE/Absent in calculation
+        // If grade is 'F', point is 0. 
+        // 0 * Credit = 0 added to points (Numerator).
+        // BUT Credit IS added to totalCredits (Denominator).
+        if (point !== undefined && credit !== undefined) {
+            totalPoints += point * credit;
+            totalCredits += credit;
+        }
+    });
+
+    if (totalCredits === 0) return "0.00";
+    return (totalPoints / totalCredits).toFixed(2);
   };
 
   // --- GENERATE REPORT FUNCTION (FIXED) ---
@@ -1377,7 +1408,7 @@ const FacultyDashboard: React.FC = () => {
                     </div>
                     <div className="p-6 overflow-y-auto">
                         <p className="text-slate-600 text-sm leading-relaxed mb-6">
-                            The KTU Result Analyser is an academic intelligence tool designed to streamline result analysis by instantly transforming official KTU result PDFs into actionable insights, grade distribution charts, and automated SGPA calculations. Built with a modern React tech stack for secure local processing, and is integrated with AI Data Analyst powered by Google's Gemini models. This context-aware assistant acts as an expert academic consultant, allowing users to ask complex questions about subject performance and student trends while ensuring strict data privacy through anonymized processing.
+                            The KTU Result Analyser is an academic intelligence tool designed to streamline result analysis by instantly transforming official KTU result PDFs into actionable insights, grade distribution charts, and automated SGPA calculations. Built with a modern React tech stack for secure local processing, and is integrated with AI Data Analyst powered by Google's Gemini models. This context-aware assistant acts as an expert academic consultant, allowing users to ask complex questions about subject performance and student trends while ensuring strict data privacy through anonymized processing. Technologies used: React, TypeScript, Vite, Tailwind CSS, Recharts, Lucide React, pdfjs-dist, React Markdown, Google Generative AI,  Vercel.
                         </p>
                         
                         <h4 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
@@ -1393,8 +1424,9 @@ const FacultyDashboard: React.FC = () => {
                                     <p className="text-xs text-slate-500">Lead Developer</p>
                                 </div>
                                 <div className="flex gap-2">
-                                    <a href="#" className="p-1.5 text-slate-400 hover:text-slate-800 transition"><Github className="w-4 h-4" /></a>
-                                    <a href="#" className="p-1.5 text-slate-400 hover:text-indigo-600 transition"><Globe className="w-4 h-4" /></a>
+                                    <a href="https://github.com/avinps" className="p-1.5 text-slate-400 hover:text-slate-800 transition"><Github className="w-4 h-4" /></a>
+                                    <a href="https://avinps.github.io/" className="p-1.5 text-slate-400 hover:text-indigo-600 transition"><Globe className="w-4 h-4" /></a>
+                                    <a href="https://www.linkedin.com/in/avinps/" target="_blank" rel="noopener noreferrer" className="p-1.5 text-slate-400 hover:text-blue-600 transition"><Linkedin className="w-4 h-4" /></a>
                                 </div>
                             </div>
 
@@ -1405,7 +1437,6 @@ const FacultyDashboard: React.FC = () => {
                                     <p className="text-xs text-slate-500">UI/UX Design & Data Collection</p>
                                 </div>
                                 <div className="flex gap-2">
-                                    <a href="#" className="p-1.5 text-slate-400 hover:text-slate-800 transition"><Github className="w-4 h-4" /></a>
                                     <a href="#" className="p-1.5 text-slate-400 hover:text-indigo-600 transition"><Globe className="w-4 h-4" /></a>
                                 </div>
                             </div>

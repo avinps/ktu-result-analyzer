@@ -54,6 +54,7 @@ export const useAnalytics = (
     });
 
     // Helper: Calculate SGPA
+    // Helper: Calculate SGPA
     const calculateSGPA = (grades: { [code: string]: string }): string | null => {
       let totalPoints = 0;
       let totalCredits = 0;
@@ -62,17 +63,22 @@ export const useAnalytics = (
       const entries = Object.entries(grades);
       
       for (const [subject, grade] of entries) {
-        if (['F', 'FE', 'Absent', 'Withheld', 'TBP'].includes(grade)) continue;
+        // 1. Only skip "Withheld" or "To Be Published"
+        if (['Withheld', 'TBP', 'WH'].includes(grade)) continue;
 
-        if (GRADE_POINTS[grade] !== undefined) {
-            const credit = creditMap[subject]; 
-            
-            if (credit === undefined) {
-                missingCredit = true;
-                break;
-            }
-            
-            const point = GRADE_POINTS[grade];
+        // 2. Lookup Credit
+        const credit = creditMap[subject]; 
+        
+        if (credit === undefined) {
+            missingCredit = true;
+            break; 
+        }
+
+        // 3. Lookup Point (F/Absent/FE will return 0 from GRADE_POINTS)
+        const point = GRADE_POINTS[grade];
+        
+        // 4. Add to totals
+        if (point !== undefined) {
             totalPoints += point * credit;
             totalCredits += credit;
         }
