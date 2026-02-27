@@ -54,7 +54,6 @@ export const useAnalytics = (
     });
 
     // Helper: Calculate SGPA
-    // Helper: Calculate SGPA
     const calculateSGPA = (grades: { [code: string]: string }): string | null => {
       let totalPoints = 0;
       let totalCredits = 0;
@@ -97,7 +96,7 @@ export const useAnalytics = (
         const atRiskCount = data.students.filter((s: StudentResult) => s.failedSubjects.length >= 3).length;
         const improvableCount = data.students.filter((s: StudentResult) => s.failedSubjects.length > 0 && s.failedSubjects.length <= 2).length;
 
-        // --- NEW HEALTH SCORE LOGIC ---
+        // --- HEALTH SCORE LOGIC ---
         // Formula: (Fully Passed * 1.0) + (Improvable * 0.5) + (At Risk * 0)
         // This explicitly rewards Pass (100% weight) and Improvable (50% weight).
         const improvablePercentage = data.total > 0 ? (improvableCount / data.total) * 100 : 0;

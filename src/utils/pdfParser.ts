@@ -100,7 +100,7 @@ export const parseResultPDF = async (file: File): Promise<ParseResult> => {
         // Ensure not a student ID
         if (!/[A-Z]{3}\d{2}/.test(name)) {
             
-            // --- FIX: Check for Multi-line Subject Names ---
+            // --- To Check for Multi-line Subject Names ---
             while (i + 1 < lines.length) {
                  const nextLine = lines[i+1];
                  const isNextCode = /[A-Z]{2,6}\d{3}/.test(nextLine);
@@ -134,7 +134,7 @@ export const parseResultPDF = async (file: File): Promise<ParseResult> => {
                  let name = nextLine.trim().replace(/^["',]+|["',]+$/g, ''); 
                  i++; // Consume first line of name
                  
-                 // --- FIX: Check for MORE lines of Subject Name ---
+                 // --- To Check for MORE lines of Subject Name ---
                  while (i + 1 < lines.length) {
                      const next2Line = lines[i+1];
                      const isNext2Code = /[A-Z]{2,6}\d{3}/.test(next2Line);

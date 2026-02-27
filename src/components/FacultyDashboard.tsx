@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2026 [Your Name / Department Name]. All Rights Reserved.
+ * Copyright (c) 2026 Avin P S. All Rights Reserved.
  * This code is proprietary and confidential. Unauthorized copying of this file, 
  * via any medium is strictly prohibited.
  */
@@ -16,7 +16,8 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { 
   Upload, BrainCircuit, GraduationCap, ShieldCheck, Building2, GitFork, 
   FileText, Copy, AlertTriangle, TrendingUp, Check, Activity, Lightbulb, Linkedin, 
-  Star, Download, X, ArrowUpDown, ArrowUp, ArrowDown, MessageSquare, Info, Github, Globe, User 
+  Star, Download, X, ArrowUpDown, ArrowUp, ArrowDown, MessageSquare, Info, Github, Globe, User, 
+  Mail
 } from 'lucide-react';
 import { FilterBar } from './FilterBar';
 
@@ -228,7 +229,7 @@ const FacultyDashboard: React.FC = () => {
   const [aboutModalOpen, setAboutModalOpen] = useState(false);
   const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
 
-  // --- NEW REPORT STATE ---
+  // --- REPORT STATE ---
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportDept, setReportDept] = useState("");
 
@@ -418,6 +419,70 @@ const FacultyDashboard: React.FC = () => {
 
   const availableSubjects = deptSpecificStats ? deptSpecificStats.subjectData.map(s => s.name) : [];
 
+  // --- DEPARTMENT-AWARE SUBJECT STATS ---
+  const globalSubjectStats = useMemo(() => {
+    if (!data) return { perfect: [], excellent: [] };
+    
+    // 1. To get students for the currently viewed batch
+    const activeStudents = data.students.filter((s: StudentResult) => {
+        const studentBatch = String(s.batch || data.metadata.regularBatch || "");
+        const selectedBatch = String(viewBatch);
+        const isBatchMatch = studentBatch.endsWith(selectedBatch) || studentBatch.includes(selectedBatch);
+        // To respect the department filter if one is selected
+        const isDeptMatch = viewDept ? s.dept === viewDept : true;
+        return isBatchMatch && isDeptMatch;
+    });
+
+    // Composite key: "DEPT_CODE" to separate identical subjects across branches
+    const subjectStats: Record<string, { dept: string, code: string, total: number, passed: number }> = {};
+    
+    // 2. Tally up passes and fails PER DEPARTMENT
+    activeStudents.forEach(student => {
+        Object.entries(student.grades || {}).forEach(([subCode, grade]) => {
+            const uniqueKey = `${student.dept}_${subCode}`;
+
+            if (!subjectStats[uniqueKey]) {
+                subjectStats[uniqueKey] = {
+                    dept: student.dept,
+                    code: subCode,
+                    total: 0,
+                    passed: 0
+                };
+            }
+            
+            subjectStats[uniqueKey].total++;
+            
+            if (!['F', 'FE', 'Absent', 'Withheld', 'WH', 'I', 'AB'].includes(grade)) {
+                subjectStats[uniqueKey].passed++;
+            }
+        });
+    });
+
+    // 3. To Calculate percentages and format
+    const allStats = Object.entries(subjectStats)
+        .map(([key, stats]) => {
+            const exactPassRate = stats.total > 0 ? (stats.passed / stats.total) * 100 : 0;
+            return {
+                id: key, // Unique ID for React mapping
+                deptCode: stats.dept,
+                deptName: data.metadata.deptMap?.[stats.dept] || stats.dept,
+                code: stats.code,
+                name: data.metadata.subjectMap?.[stats.code] || stats.code,
+                total: stats.total,
+                passed: stats.passed,
+                passRate: parseFloat(exactPassRate.toFixed(1)),
+                isPerfect: stats.passed === stats.total && stats.total > 0
+            };
+        })
+        .sort((a, b) => b.passRate - a.passRate || b.total - a.total);
+
+    // 4. To Split into the two strict lists
+    return {
+        perfect: allStats.filter(s => s.isPerfect),
+        excellent: allStats.filter(s => s.passRate > 75 && !s.isPerfect)
+    };
+  }, [data, viewBatch, viewDept]);
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files?.[0]) {
       const file = e.target.files[0];
@@ -443,18 +508,15 @@ const FacultyDashboard: React.FC = () => {
     }
   };
 
-// --- HELPER FOR REPORT (UPDATED FOR 2024 SCHEME) ---
-  // --- CORRECTED SGPA CALCULATION (Weighted Average) ---
-    // --- HELPER FOR REPORT (CORRECTED TO USE CREDITS) ---
-  // --- HELPER FOR REPORT (CORRECTED FORMULA) ---
+// --- HELPER FOR REPORT SGPA CALCULATION FOR 2024 SCHEME ---
   const calculateSGPA = (grades: { [code: string]: string }) => {
-    // 1. Define Points (Ensure F/Absent are 0)
+    // 1. Credit Points 
     const points: { [key: string]: number } = {
-        "O": 10, "S": 10, // Handle both schemes
+        "O": 10, "S": 10, 
         "A+": 9, "A": 8.5, 
-        "B+": 8, "B": 7.5, // Check if your scheme needs 7.5 or 7
-        "C+": 7, "C": 6.5, // Check if your scheme needs 6.5 or 6
-        "D": 6, "P": 5.5, "Pass": 5.5, "PASS": 5.5, // Check if your scheme needs 5.5 or 5
+        "B+": 8, "B": 7.5, 
+        "C+": 7, "C": 6.5, 
+        "D": 6, "P": 5.5, "Pass": 5.5, "PASS": 5.5, 
         "F": 0, "FE": 0, "Absent": 0, "Withheld": 0, "I": 0, "AB": 0
     };
 
@@ -468,7 +530,7 @@ const FacultyDashboard: React.FC = () => {
         const point = points[grade];
         const credit = creditMap[code]; 
 
-        // 3. CRITICAL FIX: Include F/FE/Absent in calculation
+        // 3. To Include F/FE/Absent in calculation
         // If grade is 'F', point is 0. 
         // 0 * Credit = 0 added to points (Numerator).
         // BUT Credit IS added to totalCredits (Denominator).
@@ -482,15 +544,15 @@ const FacultyDashboard: React.FC = () => {
     return (totalPoints / totalCredits).toFixed(2);
   };
 
-  // --- GENERATE REPORT FUNCTION (FIXED) ---
+  // --- GENERATE REPORT FUNCTION ---
   const generateCSVReport = () => {
     if (!reportDept || !data) return;
 
-    // 1. Get Full Dept Name
+    // 1. To Get Full Dept Name
     const fullDeptName = data.metadata.deptMap[reportDept]?.toUpperCase() || reportDept;
     const currentBatch = data.metadata.regularBatch;
 
-    // 2. Filter Students
+    // 2. To Filter Students
     const deptStudents = data.students.filter((s: any) => s.dept === reportDept && s.batch === currentBatch);
 
     if (deptStudents.length === 0) {
@@ -498,7 +560,7 @@ const FacultyDashboard: React.FC = () => {
         return;
     }
 
-    // 3. Get All Subjects
+    // 3. To Get All Subjects
     const allSubjects = new Set<string>();
     deptStudents.forEach((s: any) => Object.keys(s.grades).forEach(code => allSubjects.add(code)));
     const subjectList = Array.from(allSubjects).sort();
@@ -510,7 +572,7 @@ const FacultyDashboard: React.FC = () => {
     rows.push(`UNIVERSITY RESULT ANALYSIS - ${currentBatch} BATCH,,,,,`);
     rows.push(`,,,,,,,,,,,,`); 
 
-    // Columns (include SGPA only for 2024 scheme)
+    // Columns (to include SGPA only for 2024 scheme)
     const includeSGPA = !!(is2024Scheme);
     const headerCols = [`ROLL NO`, ...subjectList, `No.of arrears`, `Remarks`];
     if (includeSGPA) headerCols.push(`SGPA`);
@@ -581,7 +643,7 @@ const FacultyDashboard: React.FC = () => {
     rows.push(`,,,,,,,,,,,,`); 
     rows.push(`,,,,,,,,,,,,`); 
 
-    // --- TABLE 3: GRADE DISTRIBUTION (NEW SYLLABUS) ---
+    // --- TABLE 3: GRADE DISTRIBUTION ---
     rows.push(`GRADE WISE ANALYSIS,,,,,,,,,,,,`); // Table Title
     rows.push(`GRADE,${subjectList.join(',')}`); // Header
 
@@ -593,7 +655,7 @@ const FacultyDashboard: React.FC = () => {
         subjectList.forEach(sub => {
             const count = deptStudents.filter((s: any) => {
                 const g = s.grades[sub];
-                // Handle "P" and "Pass" as the same
+                // To Handle "P" and "Pass" as the same
                 if (grade === "P") return g === "P" || g === "PASS" || g === "Pass";
                 return g === grade;
             }).length;
@@ -619,7 +681,7 @@ const FacultyDashboard: React.FC = () => {
     rows.push(`FAILURE STATUS,,,,,,,,,,,,`); // Table Title
     rows.push(`Category,Count`); // Header
 
-    // Calculate failure distribution
+    // To Calculate failure distribution
     const failureDistribution: Record<number, number> = {};
     deptStudents.forEach((s: any) => {
         let failCount = 0;
@@ -668,7 +730,7 @@ const FacultyDashboard: React.FC = () => {
     setShowReportModal(false);
   };
 
-  // --- UPDATED: POWERFUL AI CONTEXT GENERATION ---
+  // --- POWERFUL AI CONTEXT GENERATION (Gemini)---
   const askAI = async () => {
     if (!data) return;
     setIsAiLoading(true);
@@ -696,7 +758,7 @@ const FacultyDashboard: React.FC = () => {
                passPercentage: d.passPercentage,
                failures: d.atRisk
            })),
-           // Include specific subject stats if viewing a department
+           // To Include specific subject stats if viewing a department
            subjectPerformance: deptSpecificStats?.subjectData.map(s => ({
                subject: s.name,
                passRate: s.passRate
@@ -742,7 +804,7 @@ const FacultyDashboard: React.FC = () => {
     try {
       const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
       const genAI = new GoogleGenerativeAI(API_KEY);
-      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" }); // Flash handles large context (1M tokens) easily
+      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" }); 
       const result = await model.generateContent(prompt);
       const response = await result.response;
       setAiAnswer(response.text());
@@ -976,7 +1038,7 @@ const FacultyDashboard: React.FC = () => {
                 </div>
              )}
 
-             {/* --- NEW REPORT MODAL --- */}
+             {/* --- REPORT MODAL --- */}
              {showReportModal && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in">
                     <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6">
@@ -1072,7 +1134,7 @@ const FacultyDashboard: React.FC = () => {
                         <BarChart data={departmentAnalytics} layout="vertical" margin={{ left: 10, right: 30 }}>
                             <XAxis type="number" domain={[0, 100]} hide />
                             <YAxis dataKey="dept" type="category" width={50} tick={{fill: '#475569', fontWeight: 500}} />
-                            {/* UPDATED: Pass Maps to Tooltip */}
+                            {/* Pass Maps to Tooltip */}
                             <Tooltip content={<CustomTooltip type="pass" deptMap={data.metadata.deptMap} subjectMap={data.metadata.subjectMap} />} cursor={{fill: 'transparent'}} />
                             <Bar 
                                 dataKey="passPercentage" 
@@ -1156,6 +1218,88 @@ const FacultyDashboard: React.FC = () => {
                                 ))}
                             </tbody>
                             </table>
+                        </div>
+                    </div>
+                    {/* --- DEPARTMENT-AWARE SUBJECT PERFORMANCE GRIDS --- */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                        
+                        {/* Grid 1: 100% Pass */}
+                        <div className="bg-white rounded-xl shadow-sm border border-emerald-200 overflow-hidden flex flex-col h-[500px]">
+                            <div className="p-4 bg-emerald-50 border-b border-emerald-100 flex items-center gap-2">
+                                <Star className="w-5 h-5 text-emerald-600" />
+                                <div>
+                                    <h3 className="font-bold text-emerald-900">100% Pass Rate Subjects</h3>
+                                    <p className="text-xs text-emerald-700">Flawless performance by faculties</p>
+                                </div>
+                            </div>
+                            <div className="flex-1 overflow-y-auto p-2 custom-scrollbar">
+                                {globalSubjectStats.perfect.length > 0 ? (
+                                    <table className="w-full text-sm text-left">
+                                        <thead className="bg-white sticky top-0 z-10 text-xs text-slate-500 uppercase shadow-sm">
+                                            <tr>
+                                                <th className="px-3 py-2 bg-white">Subject & Dept</th>
+                                                <th className="px-3 py-2 bg-white text-right">Appeared</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {globalSubjectStats.perfect.map(sub => (
+                                                <tr key={sub.id} className="hover:bg-slate-50">
+                                                    <td className="px-3 py-3">
+                                                        <div className="font-bold text-slate-700">{sub.code}</div>
+                                                        <div className="text-xs text-slate-500 truncate max-w-[200px]" title={sub.name}>{sub.name}</div>
+                                                        {/* Shows the Department Name */}
+                                                        <div className="text-[10px] font-bold text-indigo-500 mt-1 uppercase tracking-wider">{sub.deptName}</div>
+                                                    </td>
+                                                    <td className="px-3 py-3 text-right font-bold text-emerald-600 align-top">{sub.total} students</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                ) : (
+                                    <div className="h-full flex items-center justify-center text-slate-400 text-sm">No subjects achieved 100%</div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Grid 2: >75% Pass */}
+                        <div className="bg-white rounded-xl shadow-sm border border-blue-200 overflow-hidden flex flex-col h-[500px]">
+                            <div className="p-4 bg-blue-50 border-b border-blue-100 flex items-center gap-2">
+                                <TrendingUp className="w-5 h-5 text-blue-600" />
+                                <div>
+                                    <h3 className="font-bold text-blue-900">High Performing Subjects</h3>
+                                    <p className="text-xs text-blue-700">Pass rate between 75% and 99%</p>
+                                </div>
+                            </div>
+                            <div className="flex-1 overflow-y-auto p-2 custom-scrollbar">
+                                {globalSubjectStats.excellent.length > 0 ? (
+                                    <table className="w-full text-sm text-left">
+                                        <thead className="bg-white sticky top-0 z-10 text-xs text-slate-500 uppercase shadow-sm">
+                                            <tr>
+                                                <th className="px-3 py-2 bg-white">Subject & Dept</th>
+                                                <th className="px-3 py-2 bg-white text-right">Pass %</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {globalSubjectStats.excellent.map(sub => (
+                                                <tr key={sub.id} className="hover:bg-slate-50">
+                                                    <td className="px-3 py-3">
+                                                        <div className="font-bold text-slate-700">{sub.code}</div>
+                                                        <div className="text-xs text-slate-500 truncate max-w-[200px]" title={sub.name}>{sub.name}</div>
+                                                        {/* Shows the Department Name */}
+                                                        <div className="text-[10px] font-bold text-indigo-500 mt-1 uppercase tracking-wider">{sub.deptName}</div>
+                                                    </td>
+                                                    <td className="px-3 py-3 text-right align-top">
+                                                        <span className="font-bold text-blue-600 text-base">{sub.passRate}%</span>
+                                                        <div className="text-[10px] text-slate-400 font-medium">{sub.passed}/{sub.total} passed</div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                ) : (
+                                    <div className="h-full flex items-center justify-center text-slate-400 text-sm">No subjects in this range</div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </>
@@ -1252,7 +1396,7 @@ const FacultyDashboard: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* --- NEW: Health & Projection Tile --- */}
+                    {/* --- Health & Projection Tile --- */}
                     {!viewSubject && deptSpecificStats && (
                       <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl shadow-md p-6 text-white flex flex-col md:flex-row items-center justify-between gap-6 animate-in slide-in-from-bottom-2">
                          {/* Left: Health Score */}
@@ -1285,7 +1429,7 @@ const FacultyDashboard: React.FC = () => {
                       </div>
                     )}
 
-                    {/* --- NEW: IMPROVABLE & AT RISK STUDENTS (Only visible if no specific subject selected) --- */}
+                    {/* --- IMPROVABLE & AT RISK STUDENTS (Only visible if no specific subject selected) --- */}
                     {!viewSubject && deptSpecificStats && (
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in slide-in-from-bottom-3">
                         
@@ -1360,7 +1504,7 @@ const FacultyDashboard: React.FC = () => {
           </div>
         )}
 
-        {/* --- NEW: PROJECT & SUPPORT TILE (Always Visible) --- */}
+        {/* --- PROJECT & SUPPORT TILE (Always Visible) --- */}
         <div className="bg-white p-6 rounded-xl shadow-lg border border-slate-200 mt-8 mb-8">
             <div className="flex items-center gap-3 mb-6">
                 <div className="bg-slate-100 p-2 rounded-lg text-slate-600">
@@ -1437,7 +1581,7 @@ const FacultyDashboard: React.FC = () => {
                                     <p className="text-xs text-slate-500">UI/UX Design & Data Collection</p>
                                 </div>
                                 <div className="flex gap-2">
-                                    <a href="#" className="p-1.5 text-slate-400 hover:text-indigo-600 transition"><Globe className="w-4 h-4" /></a>
+                                    <a href="https://www.linkedin.com/in/clevin-saji-3903303b3/" target="_blank" rel="noopener noreferrer" className="p-1.5 text-slate-400 hover:text-blue-600 transition"><Linkedin className="w-4 h-4" /></a>
                                 </div>
                             </div>
                             {/* Project Guide */}
@@ -1448,7 +1592,7 @@ const FacultyDashboard: React.FC = () => {
                                     <p className="text-xs text-slate-500">HOD, Dept of CSE Data Science, IESCE, Thrissur</p>
                                 </div>
                                 <div className="flex gap-2">
-                                    <a href="#" className="p-1.5 text-slate-400 hover:text-indigo-600 transition"><Globe className="w-4 h-4" /></a>
+                                    <a href="mailto:dshod@iesce.info" className="p-1.5 text-slate-400 hover:text-indigo-600 transition"><Mail className="w-4 h-4" /></a>
                                 </div>
                             </div>
                         </div>
