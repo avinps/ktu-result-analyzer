@@ -1142,9 +1142,11 @@ const FacultyDashboard: React.FC = () => {
                                 barSize={32} 
                                 label={<CustomBarLabel />}
                             >
-                                {departmentAnalytics.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={stringToColor(entry.dept)} />
-                                ))}
+                                {departmentAnalytics.map((entry, index) => {
+                                    const val = parseFloat(entry.passPercentage);
+                                    const color = val >= 75 ? "#10b981" : val >= 50 ? "#eab308" : "#ef4444";
+                                    return <Cell key={`cell-${index}`} fill={color} />;
+                                })}
                             </Bar>
                         </BarChart>
                         </ResponsiveContainer>
@@ -1166,9 +1168,11 @@ const FacultyDashboard: React.FC = () => {
                             <YAxis domain={[0, 100]} hide />
                             <Tooltip content={<CustomTooltip type="health" deptMap={data.metadata.deptMap} subjectMap={data.metadata.subjectMap} />} cursor={{fill: 'transparent'}} />
                             <Bar dataKey="healthScore" radius={[4, 4, 0, 0]} barSize={40} label={{ position: 'top', fill: '#64748b', fontSize: 10, fontWeight: 'bold' }}>
-                                {departmentAnalytics.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={stringToColor(entry.dept)} />
-                                ))}
+                                {departmentAnalytics.map((entry, index) => {
+                                    const val = parseFloat(entry.healthScore);
+                                    const color = val >= 75 ? "#10b981" : val >= 50 ? "#eab308" : "#ef4444";
+                                    return <Cell key={`cell-${index}`} fill={color} />;
+                                })}
                             </Bar>
                         </BarChart>
                         </ResponsiveContainer>
@@ -1387,9 +1391,11 @@ const FacultyDashboard: React.FC = () => {
                                         barSize={32} 
                                         label={<CustomBarLabel />}
                                     >
-                                        {deptSpecificStats?.subjectData.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={entry.passRate > 50 ? "#10b981" : "#ef4444"} />
-                                        ))}
+                                        {deptSpecificStats?.subjectData.map((entry, index) => {
+                                            const val = entry.passRate;
+                                            const color = val >= 75 ? "#10b981" : val >= 50 ? "#eab308" : "#ef4444";
+                                            return <Cell key={`cell-${index}`} fill={color} />;
+                                        })}
                                     </Bar>
                                 </BarChart>
                             </ResponsiveContainer>
