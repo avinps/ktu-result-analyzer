@@ -420,20 +420,19 @@ const FacultyDashboard: React.FC = () => {
   const availableSubjects = deptSpecificStats ? deptSpecificStats.subjectData.map(s => s.name) : [];
 
   // --- DEPARTMENT-AWARE SUBJECT STATS ---
+  // --- NEW: DEPARTMENT-AWARE SUBJECT STATS ---
   const globalSubjectStats = useMemo(() => {
-    if (!data) return { perfect: [], excellent: [] };
+    if (!data) return { topPerforming: [], critical: [] };
     
-    // 1. To get students for the currently viewed batch
+    // 1. Get students for the currently viewed batch
     const activeStudents = data.students.filter((s: StudentResult) => {
         const studentBatch = String(s.batch || data.metadata.regularBatch || "");
         const selectedBatch = String(viewBatch);
         const isBatchMatch = studentBatch.endsWith(selectedBatch) || studentBatch.includes(selectedBatch);
-        // To respect the department filter if one is selected
         const isDeptMatch = viewDept ? s.dept === viewDept : true;
         return isBatchMatch && isDeptMatch;
     });
 
-    // Composite key: "DEPT_CODE" to separate identical subjects across branches
     const subjectStats: Record<string, { dept: string, code: string, total: number, passed: number }> = {};
     
     // 2. Tally up passes and fails PER DEPARTMENT
@@ -458,28 +457,28 @@ const FacultyDashboard: React.FC = () => {
         });
     });
 
-    // 3. To Calculate percentages and format
+    // 3. Calculate percentages and format
     const allStats = Object.entries(subjectStats)
         .map(([key, stats]) => {
             const exactPassRate = stats.total > 0 ? (stats.passed / stats.total) * 100 : 0;
             return {
-                id: key, // Unique ID for React mapping
+                id: key, 
                 deptCode: stats.dept,
                 deptName: data.metadata.deptMap?.[stats.dept] || stats.dept,
                 code: stats.code,
                 name: data.metadata.subjectMap?.[stats.code] || stats.code,
                 total: stats.total,
                 passed: stats.passed,
-                passRate: parseFloat(exactPassRate.toFixed(1)),
-                isPerfect: stats.passed === stats.total && stats.total > 0
+                passRate: parseFloat(exactPassRate.toFixed(1))
             };
         })
+        // This sorts by highest pass rate first (descending)
         .sort((a, b) => b.passRate - a.passRate || b.total - a.total);
 
-    // 4. To Split into the two strict lists
+    // 4. Split into the two requested lists
     return {
-        perfect: allStats.filter(s => s.isPerfect),
-        excellent: allStats.filter(s => s.passRate > 75 && !s.isPerfect)
+        topPerforming: allStats.filter(s => s.passRate >= 75),
+        critical: allStats.filter(s => s.passRate < 20)
     };
   }, [data, viewBatch, viewDept]);
 
@@ -1224,58 +1223,20 @@ const FacultyDashboard: React.FC = () => {
                             </table>
                         </div>
                     </div>
-                    {/* --- DEPARTMENT-AWARE SUBJECT PERFORMANCE GRIDS --- */}
+                    {/* --- NEW: DEPARTMENT-AWARE SUBJECT PERFORMANCE GRIDS --- */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
                         
-                        {/* Grid 1: 100% Pass */}
+                        {/* Grid 1: >= 75% Pass */}
                         <div className="bg-white rounded-xl shadow-sm border border-emerald-200 overflow-hidden flex flex-col h-[500px]">
                             <div className="p-4 bg-emerald-50 border-b border-emerald-100 flex items-center gap-2">
                                 <Star className="w-5 h-5 text-emerald-600" />
                                 <div>
-                                    <h3 className="font-bold text-emerald-900">100% Pass Rate Subjects</h3>
-                                    <p className="text-xs text-emerald-700">Flawless performance by faculties</p>
+                                    <h3 className="font-bold text-emerald-900">Top Performing Subjects</h3>
+                                    <p className="text-xs text-emerald-700">Pass rate of 75% and above</p>
                                 </div>
                             </div>
                             <div className="flex-1 overflow-y-auto p-2 custom-scrollbar">
-                                {globalSubjectStats.perfect.length > 0 ? (
-                                    <table className="w-full text-sm text-left">
-                                        <thead className="bg-white sticky top-0 z-10 text-xs text-slate-500 uppercase shadow-sm">
-                                            <tr>
-                                                <th className="px-3 py-2 bg-white">Subject & Dept</th>
-                                                <th className="px-3 py-2 bg-white text-right">Appeared</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-100">
-                                            {globalSubjectStats.perfect.map(sub => (
-                                                <tr key={sub.id} className="hover:bg-slate-50">
-                                                    <td className="px-3 py-3">
-                                                        <div className="font-bold text-slate-700">{sub.code}</div>
-                                                        <div className="text-xs text-slate-500 truncate max-w-[200px]" title={sub.name}>{sub.name}</div>
-                                                        {/* Shows the Department Name */}
-                                                        <div className="text-[10px] font-bold text-indigo-500 mt-1 uppercase tracking-wider">{sub.deptName}</div>
-                                                    </td>
-                                                    <td className="px-3 py-3 text-right font-bold text-emerald-600 align-top">{sub.total} students</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                ) : (
-                                    <div className="h-full flex items-center justify-center text-slate-400 text-sm">No subjects achieved 100%</div>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Grid 2: >75% Pass */}
-                        <div className="bg-white rounded-xl shadow-sm border border-blue-200 overflow-hidden flex flex-col h-[500px]">
-                            <div className="p-4 bg-blue-50 border-b border-blue-100 flex items-center gap-2">
-                                <TrendingUp className="w-5 h-5 text-blue-600" />
-                                <div>
-                                    <h3 className="font-bold text-blue-900">High Performing Subjects</h3>
-                                    <p className="text-xs text-blue-700">Pass rate between 75% and 99%</p>
-                                </div>
-                            </div>
-                            <div className="flex-1 overflow-y-auto p-2 custom-scrollbar">
-                                {globalSubjectStats.excellent.length > 0 ? (
+                                {globalSubjectStats.topPerforming.length > 0 ? (
                                     <table className="w-full text-sm text-left">
                                         <thead className="bg-white sticky top-0 z-10 text-xs text-slate-500 uppercase shadow-sm">
                                             <tr>
@@ -1284,16 +1245,55 @@ const FacultyDashboard: React.FC = () => {
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-100">
-                                            {globalSubjectStats.excellent.map(sub => (
+                                            {globalSubjectStats.topPerforming.map(sub => (
                                                 <tr key={sub.id} className="hover:bg-slate-50">
                                                     <td className="px-3 py-3">
                                                         <div className="font-bold text-slate-700">{sub.code}</div>
                                                         <div className="text-xs text-slate-500 truncate max-w-[200px]" title={sub.name}>{sub.name}</div>
-                                                        {/* Shows the Department Name */}
                                                         <div className="text-[10px] font-bold text-indigo-500 mt-1 uppercase tracking-wider">{sub.deptName}</div>
                                                     </td>
                                                     <td className="px-3 py-3 text-right align-top">
-                                                        <span className="font-bold text-blue-600 text-base">{sub.passRate}%</span>
+                                                        <span className="font-bold text-emerald-600 text-base">{sub.passRate}%</span>
+                                                        <div className="text-[10px] text-slate-400 font-medium">{sub.passed}/{sub.total} passed</div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                ) : (
+                                    <div className="h-full flex items-center justify-center text-slate-400 text-sm">No subjects in this range</div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Grid 2: < 20% Pass (Critical) */}
+                        <div className="bg-white rounded-xl shadow-sm border border-red-200 overflow-hidden flex flex-col h-[500px]">
+                            <div className="p-4 bg-red-50 border-b border-red-100 flex items-center gap-2">
+                                <AlertTriangle className="w-5 h-5 text-red-600" />
+                                <div>
+                                    <h3 className="font-bold text-red-900">Critical Subjects</h3>
+                                    <p className="text-xs text-red-700">Pass rate strictly below 20%</p>
+                                </div>
+                            </div>
+                            <div className="flex-1 overflow-y-auto p-2 custom-scrollbar">
+                                {globalSubjectStats.critical.length > 0 ? (
+                                    <table className="w-full text-sm text-left">
+                                        <thead className="bg-white sticky top-0 z-10 text-xs text-slate-500 uppercase shadow-sm">
+                                            <tr>
+                                                <th className="px-3 py-2 bg-white">Subject & Dept</th>
+                                                <th className="px-3 py-2 bg-white text-right">Pass %</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {globalSubjectStats.critical.map(sub => (
+                                                <tr key={sub.id} className="hover:bg-slate-50">
+                                                    <td className="px-3 py-3">
+                                                        <div className="font-bold text-slate-700">{sub.code}</div>
+                                                        <div className="text-xs text-slate-500 truncate max-w-[200px]" title={sub.name}>{sub.name}</div>
+                                                        <div className="text-[10px] font-bold text-indigo-500 mt-1 uppercase tracking-wider">{sub.deptName}</div>
+                                                    </td>
+                                                    <td className="px-3 py-3 text-right align-top">
+                                                        <span className="font-bold text-red-600 text-base">{sub.passRate}%</span>
                                                         <div className="text-[10px] text-slate-400 font-medium">{sub.passed}/{sub.total} passed</div>
                                                     </td>
                                                 </tr>
