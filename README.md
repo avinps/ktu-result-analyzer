@@ -7,7 +7,7 @@
 
 **An intelligent academic intelligence tool designed to streamline the analysis of APJ Abdul Kalam Technological University (KTU) exam results.**
 
-**Visit Project:** https://ktu-result-analyzer.vercel.app/
+**Visit Project (USE DEMO RESULT PDF IN THE PROJECT ROOT TO TRY):** https://ktu-result-analyzer.vercel.app/
 
 This application instantly transforms complex official result PDFs into actionable insights, visual charts, and automated reports. It features an integrated **AI Data Analyst** (powered by Google Gemini) that allows faculty to ask natural language questions about student performance.
 
